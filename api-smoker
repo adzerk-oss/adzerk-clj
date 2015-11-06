@@ -1,0 +1,344 @@
+;; README
+;;
+;; This is the beginning of a tool for smoke testing the API, and doing integration tests.
+;;
+;; To use it you need to set two environment variables:
+;;   - ADZERK_API_HOST
+;;   - ADZERK_API_KEY
+;;
+;; For running the tests you need to set the test-* variables. If you use the
+;; defaults make sure you grab my (jarrod.adzerk.net) api key.
+;;
+;; Then run boot repl in the directory w/ this file and (load-file "api-smoker").
+;; To run all the tests run (clojure.tests/run-tests).
+
+(set-env! :dependencies '[[clj-http "2.0.0"]
+                          [cheshire "5.5.0"]
+                          [org.clojure/tools.logging "0.3.1"]
+                          [camel-snake-kebab "0.3.2"]])
+
+(require '[clojure.tools.logging :as log]
+         '[clj-http.client :as client]
+         '[camel-snake-kebab.core :refer [->PascalCaseString ->kebab-case-keyword]]
+         '[cheshire.core :refer [generate-string parse-string]]
+         '[clojure.test :as t :refer [deftest is testing]]
+         '[clojure.walk :refer [postwalk]])
+
+
+;; setup ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def root-url (atom (or (System/getenv "ADZERK_API_HOST") nil)))
+(def test-key (atom (or (System/getenv "ADZERK_API_KEY")  nil)))
+
+(def test-zone       {:id 148202})
+(def test-campaign   {:id 320196})
+(def test-creative   {:id 925092})
+(def test-flight     {:id 643353})
+(def test-advertiser {:id 102674})
+(def test-channel    {:id 22690})
+(def test-ad         {:id 1216669})
+(def test-site       {:id 335692})
+(def test-priority   {:id 83353})
+
+;; helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn transform-keys [t coll]
+  "Recursively transforms all map keys in coll with t.
+   Taken from: https://crossclj.info/ns/camel-snake-kebab/latest/camel-snake-kebab.extras.cljs.html"
+  (letfn [(transform [[k v]] [(t k) v])]
+    (postwalk (fn [x] (if (map? x) (into {} (map transform x)) x)) coll)))
+
+(defn csharp->clj
+  "Keywordize a result from the API. This helps when REPLing together data for
+  testing."
+  [api-entity]
+  (->> [api-entity]
+       (transform-keys ->kebab-case-keyword)
+       (first)))
+
+(defn- log-passthru [x]
+  (log/info x)
+  x)
+
+(defn- zerkreq
+  [method url-fmt]
+  (let [url-fmt (str @root-url url-fmt)]
+    (fn doreq
+      ([api-key]
+       (doreq api-key [] nil))
+      ([api-key data]
+       (doreq api-key [] data))
+      ([api-key args data]
+       (let [url (apply format url-fmt args)
+             req {:method      method
+                  :form-params data
+                  :url         url
+                  :headers     {"X-Adzerk-ApiKey" api-key}}]
+         ;; an HTML response indicates an error
+         (try (parse-string (:body (client/request (log-passthru req))))
+              (catch Exception e
+                  (throw (log/spy :error (ex-info "API request exception" req e))))))))))
+
+(defn clj->csharp
+  [m & [overrides]]
+  (generate-string m {:key-fn #(get overrides % (->PascalCaseString %))}))
+
+(defmacro api
+  [method url-fmt & forms]
+  `(let [~'doapi (zerkreq ~method ~url-fmt)]
+     (fn ~@forms)))
+
+(defmacro defapi
+  [name & forms]
+  `(def ~name (api ~@forms)))
+
+;; management api endpoints ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defapi create-site!
+  :post "/v1/site"
+  [api-key req]
+  (doapi api-key {:site (clj->csharp req)}))
+
+(defapi update-site!
+  :put "/v1/site/%s"
+  [api-key {:keys [id] :as req}]
+  (doapi api-key [id] {:site (clj->csharp req)}))
+
+(defapi delete-site!
+  :put "/v1/site/%s"
+  [api-key {:keys [id] :as req}]
+  (doapi api-key [id] {:site (clj->csharp (assoc req :is-deleted true))}))
+
+;;---------------------------------------------------------------------------;;
+
+(defapi add-site-to-channel!
+  :post "/v1/channelSite"
+  [api-key req]
+  (doapi api-key {:channelSite (clj->csharp req)}))
+
+(defapi update-site-channel-map!
+  :put "/v1/channelSite"
+  [api-key {:keys [channelid] :as req}]
+  (doapi api-key {:channelSite (clj->csharp req)}))
+
+(defapi remove-site-from-channel!
+  :get "/v1/channel/%s/site/%s/delete"
+  [api-key {:keys [channelid siteid] :as req}]
+  (doapi api-key [channelid siteid] nil))
+
+;;---------------------------------------------------------------------------;;
+
+(defapi create-channel!
+  :post "/v1/channel"
+  [api-key req]
+  (doapi api-key {:channel (clj->csharp req {:cpm "CPM"})}))
+
+(defapi update-channel!
+  :put "/v1/channel/%s"
+  [api-key {:keys [id] :as req}]
+  (doapi api-key [id] {:channel (clj->csharp req {:cpm "CPM"})}))
+
+(defapi delete-channel!
+  :get "/v1/channel/%s/delete"
+  [api-key {:keys [id]}]
+  (doapi api-key [id] nil))
+
+;;---------------------------------------------------------------------------;;
+
+(defapi create-adtype!
+  :post "/v1/adtypes"
+  [api-key req]
+  (doapi api-key {:adtype (clj->csharp req)}))
+
+(defapi delete-adtype!
+  :get "/v1/adtypes/%s/delete"
+  [api-key {:keys [id]}]
+  (doapi api-key [id] nil))
+
+;;---------------------------------------------------------------------------;;
+
+(defapi create-advertiser!
+  :post "/v1/advertiser"
+  [api-key req]
+  (print "creating advertiser")
+  (doapi api-key {:advertiser (clj->csharp req)}))
+
+(defapi update-advertiser!
+  :put "/v1/advertiser/%s"
+  [api-key {:keys [id] :as req}]
+  (print "updating advertiser")
+  (doapi api-key [id] {:advertiser (clj->csharp req)}))
+
+(defapi delete-advertiser!
+  :get "/v1/advertiser/%s/delete"
+  [api-key {:keys [id]}]
+  (doapi api-key [id] nil))
+
+;;---------------------------------------------------------------------------;;
+
+(defapi create-priority!
+  :post "/v1/priority"
+  [api-key req]
+  (doapi api-key {:priority (clj->csharp req)}))
+
+(defapi update-priority!
+  :put "/v1/priority/%s"
+  [api-key {:keys [id] :as req}]
+  (doapi api-key [id] {:priority (clj->csharp req {:cpm "CPM"})}))
+
+(defapi delete-priority!
+  :get "/v1/priority/%s/delete"
+  [api-key {:keys [id]}]
+  (doapi api-key [id] nil))
+
+;;---------------------------------------------------------------------------;;
+
+(defapi create-campaign!
+  :post "/v1/campaign"
+  [api-key req]
+  (doapi api-key {:campaign (clj->csharp req)}))
+
+(defapi update-campaign!
+  :put "/v1/campaign/%s"
+  [api-key {:keys [id] :as req}]
+  (doapi api-key [id] {:campaign (clj->csharp req)}))
+
+(defapi delete-campaign!
+  :get "/v1/campaign/%s/delete"
+  [api-key {:keys [id]}]
+  (doapi api-key [id] nil))
+
+;;---------------------------------------------------------------------------;;
+
+(defapi create-creative!
+  :post "/v1/creative"
+  [api-key req]
+  (doapi api-key {:creative (clj->csharp req)}))
+
+(defapi update-creative!
+  :put "/v1/creative/%s"
+  [api-key {:keys [id] :as req}]
+  (doapi api-key [id] {:creative (clj->csharp req)}))
+
+;;---------------------------------------------------------------------------;;
+
+;; Smoke Tester
+;; Smoke Tester
+;; Smoke Tester
+
+;; Endpoints ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro deflist
+  "List all items."
+  [item]
+  `(defapi ~(symbol (format "list-%ss!" item))
+     :get ~(str "/v1/" item)
+     [api-key#]
+     (~'doapi api-key#)))
+
+(defmacro defget
+  "Get an item."
+  [item]
+  `(defapi ~(symbol (format "%s!" item))
+     :get ~(str "/v1/" item "/%s")
+     [api-key# {:keys [~'id]}]
+     (~'doapi api-key# [~'id] nil)))
+
+(deflist "campaign")
+(defget  "campaign")
+(deflist "flight")
+(defget  "flight")
+(deflist "advertiser")
+(defget  "advertiser")
+(deflist "channel")
+(defget  "channel")
+(deflist "zone")
+(defget  "zone")
+(deflist "site")
+(defget  "site")
+(deflist "priority")
+(defget  "priority")
+
+(deflist "channelSite")
+
+(defapi channel-site!
+  :get "/v1/channel/%s/site/%s"
+  [api-key {:keys [c-id s-id]}]
+  (doapi api-key [c-id s-id] nil))
+
+(defapi list-creatives!
+  :get "/v1/advertiser/87479/creatives"
+  [api-key]
+  (doapi api-key))
+(defget "creative")
+
+(defapi list-ads!
+  :get "/v1/flight/819865/creatives"
+  [api-key]
+  (doapi api-key))
+
+(defapi ad!
+  :get "/v1/flight/819865/creative/%s"
+  [api-key {:keys [id]}]
+  (doapi api-key [id] nil))
+
+;; Tests ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn items [adzerk-resp]
+  (get adzerk-resp "items"))
+
+(defn deleted? [{is-del? "IsDeleted"}]
+  (boolean is-del?))
+
+(def not-deleted? (complement deleted?))
+
+(defn excluding-deleted? [adzerk-resp]
+  (every? not-deleted? (items adzerk-resp)))
+
+(comment
+  (deftest is-deleted-tests
+    (testing "Listing endpoints do not include deleted items for"
+      (is (excluding-deleted? (list-campaigns!   @test-key)) "campaigns.")
+      (is (excluding-deleted? (list-flights!     @test-key)) "flights.")
+      (is (excluding-deleted? (list-advertisers! @test-key)) "advertisers.")
+      (is (excluding-deleted? (list-creatives!   @test-key)) "creatives.")
+      (is (excluding-deleted? (list-zones!       @test-key)) "zones.")
+      (is (excluding-deleted? (list-channels!    @test-key)) "channels.")
+      (is (excluding-deleted? (list-ads!         @test-key)) "ads.")
+      (is (excluding-deleted? (list-sites!       @test-key)) "sites.")
+      (is (excluding-deleted? (list-prioritys!   @test-key)) "priorities.")
+      )
+    (testing "Get endpoints return a deleted"
+      (is (deleted? (zone!       @test-key test-zone))       "zone.")
+      (is (deleted? (campaign!   @test-key test-campaign))   "campaign.")
+      (is (deleted? (creative!   @test-key test-creative))   "creative.")
+      (is (deleted? (flight!     @test-key test-flight))     "flight.")
+      (is (deleted? (advertiser! @test-key test-advertiser)) "advertiser.")
+      (is (deleted? (channel!    @test-key test-channel))    "channel.")
+      (is (deleted? (ad!         @test-key test-ad))         "ad.")
+      (is (deleted? (site!       @test-key test-site))       "site.")
+      (is (deleted? (priority!   @test-key test-priority))   "priority.")
+      )))
+
+(defn archived? [{is-archived? "IsArchived"}]
+  (boolean is-archived?))
+
+(deftest is-archived-tests
+  (testing "I can request an archived"
+    (is (archived? (campaign! @test-key {:id 326552})) "campaign.")
+    (is nil "flight.")
+  (testing "Using the management API I can"
+    (is nil "archive a campaign.")
+    (is nil "archive a flight.")
+    (is nil "un-archive an archived campaign.")
+    (is nil "un-archive an archived flight.")
+    )
+  (testing "By default requesting a list of"
+    (is nil "campaigns includes only unarchived items.")
+    (is nil "flights includes only unarchived items.")
+    )
+  (testing "I can request a list of archived"
+    (is nil "campaigns.")
+    (is nil "flights.")
+    (is nil "flights for a campaign.")
+    )))
