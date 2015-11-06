@@ -1,9 +1,8 @@
 (ns adzerk.helpers
-  (require '[clojure.tools.logging :as log]
-           '[clj-http.client :as client]
-           '[camel-snake-kebab.core :refer [->PascalCaseString ->kebab-case-keyword]]
-           '[cheshire.core :refer [generate-string parse-string]]
-           '[clojure.walk :refer [postwalk]]))
+  (:require [clojure.tools.logging :as log]
+            [camel-snake-kebab.core :refer [->PascalCaseString ->kebab-case-keyword]]
+            [cheshire.core :refer [generate-string]]
+            [clojure.walk :refer [postwalk]]))
 
 (defn transform-keys [t coll]
   "Recursively transforms all map keys in coll with t.

@@ -1,5 +1,8 @@
 (ns adzerk.api
-  (:require [adzerk.helpers :refer (log-passthru)]))
+  (:require [adzerk.helpers        :refer (log-passthru)]
+            [clj-http.client       :as    client]
+            [clojure.tools.logging :as    log]
+            [cheshire.core         :refer (parse-string)]))
 
 (def root-url (atom (System/getenv "ADZERK_API_HOST")))
 (def api-key (atom (System/getenv "ADZERK_API_KEY")))
