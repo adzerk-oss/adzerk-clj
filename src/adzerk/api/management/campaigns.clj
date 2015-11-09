@@ -1,5 +1,5 @@
 (ns adzerk.api.management.campaigns
-  (:require [adzerk.api :refer (defapi doapi)]
+  (:require [adzerk.api :refer (defapi deflist defget)]
             [adzerk.helpers :refer (clj->csharp)]))
 
 (defapi create-advertiser!
