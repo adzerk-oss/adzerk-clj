@@ -20,6 +20,7 @@
   (doapi api-key [id] nil))
 
 ;;---------------------------------------------------------------------------;;
+;; min keys for update camp: :id :is-archived :advertiser-id :start-date :name
 
 (defapi create-campaign!
   :post "/v1/campaign"
@@ -35,6 +36,13 @@
   :get "/v1/campaign/%s/delete"
   [api-key {:keys [id]}]
   (doapi api-key [id] nil))
+
+;;---------------------------------------------------------------------------;;
+
+(defapi update-flight!
+  :put "/v1/flight/%s"
+  [api-key {:keys [id] :as req}]
+  (doapi api-key [id] {:flight (clj->csharp req)}))
 
 ;;---------------------------------------------------------------------------;;
 
