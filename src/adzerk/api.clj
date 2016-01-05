@@ -26,7 +26,7 @@
                   :url         url
                   :headers     {"X-Adzerk-ApiKey" api-key}}]
          ;; an HTML response indicates an error
-         (try (parse-string (:body (client/request (log-passthru req))))
+         (try (parse-string (:body (client/request (log-passthru req))) true)
               (catch Exception e
                   (throw (log/spy :error (ex-info "API request exception" req e))))))))))
 
@@ -45,7 +45,7 @@
   `(defapi ~(symbol (format "list-%ss!" item))
      :get ~(str "/v1/" item)
      [api-key#]
-     (~'doapi api-key#)))
+     (:items (~'doapi api-key#))))
 
 (defmacro defget
   "Get an item."
