@@ -1,15 +1,19 @@
 (ns adzerk.api
   (:require [adzerk.helpers        :refer (log-passthru)]
+            [adzerk.env            :as    env]
             [clj-http.client       :as    client]
             [clojure.tools.logging :as    log]
             [cheshire.core         :refer (parse-string)]))
 
 (def ^:dynamic *root-url* (System/getenv "ADZERK_API_HOST"))
 (def ^:dynamic *api-key*  (System/getenv "ADZERK_API_KEY"))
+(env/def
+  ADZERK_API_HOST "http://api.adzerk.net/v1/"
+  ADZERK_API_KEY  :required)
 
 (defn zerkreq
   [method url-fmt]
-  (let [url-fmt (str *root-url* url-fmt)]
+  (let [url-fmt (str ADZERK_API_HOST url-fmt)]
     (fn doreq
       ([api-key]
        (doreq api-key [] nil))
