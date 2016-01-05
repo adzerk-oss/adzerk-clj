@@ -5,6 +5,12 @@
             [adzerk.api.management.campaigns :refer :all]
             [adzerk.api.management.inventory :refer :all]))
 
+; FIXME: this was copied over from Jarrod's test script, where @test-key is his
+; adzerk API key. We should rewrite this in more general terms... perhaps we
+; should write some test cases that create the archived thing, and then have
+; subsequent tests test the thing that we created, and then have some more test
+; cases test that we can delete the thing in order to clean up.
+
 (deftest is-deleted-tests
   (testing "Listing endpoints do not include deleted items for"
     (is (excluding-deleted? (list-campaigns!   *api-key*)) "campaigns.")

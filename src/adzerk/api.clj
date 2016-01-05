@@ -5,11 +5,11 @@
             [clojure.tools.logging :as    log]
             [cheshire.core         :refer (parse-string)]))
 
-(def ^:dynamic *root-url* (System/getenv "ADZERK_API_HOST"))
-(def ^:dynamic *api-key*  (System/getenv "ADZERK_API_KEY"))
 (env/def
   ADZERK_API_HOST "http://api.adzerk.net/v1/"
   ADZERK_API_KEY  :required)
+
+(def ^:dynamic *api-key* ADZERK_API_KEY)
 
 (defn zerkreq
   [method url-fmt]
