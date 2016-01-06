@@ -39,12 +39,12 @@
 (defapi create-channel!
   :post "/v1/channel"
   [api-key req]
-  (doapi api-key {:channel (clj->csharp req {:cpm "CPM"})}))
+  (doapi api-key {:channel (clj->csharp req {:cpm 0 :engine 0})}))
 
 (defapi update-channel!
   :put "/v1/channel/%s"
   [api-key {:keys [id] :as req}]
-  (doapi api-key [id] {:channel (clj->csharp req {:cpm "CPM"})}))
+  (doapi api-key [id] {:channel (clj->csharp req {:cpm 0 :engine 0})}))
 
 (defapi delete-channel!
   :get "/v1/channel/%s/delete"
@@ -61,7 +61,7 @@
 (defapi update-priority!
   :put "/v1/priority/%s"
   [api-key {:keys [id] :as req}]
-  (doapi api-key [id] {:priority (clj->csharp req {:cpm "CPM"})}))
+  (doapi api-key [id] {:priority (clj->csharp req)}))
 
 (defapi delete-priority!
   :get "/v1/priority/%s/delete"
