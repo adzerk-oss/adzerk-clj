@@ -24,5 +24,5 @@
 
 (defn clj->csharp
   [m & [overrides]]
-  (generate-string m {:key-fn #(get overrides % (->PascalCaseString %))}))
+  (generate-string (merge m overrides) {:key-fn ->PascalCaseString}))
 
