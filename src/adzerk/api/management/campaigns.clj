@@ -58,26 +58,27 @@
 
 ;;---------------------------------------------------------------------------;;
 
+(deflist "advertiser")
+(defget  "advertiser")
 (deflist "campaign")
 (defget  "campaign")
 (deflist "flight")
 (defget  "flight")
-(deflist "advertiser")
-(defget  "advertiser")
+(defget  "creative")
 
-(defapi list-creatives!
-  :get "/v1/advertiser/87479/creatives"
-  [api-key]
-  (doapi api-key))
-(defget "creative")
+; TODO: make these endpoints take parameters
+; (defapi list-creatives!
+;   :get "/v1/advertiser/87479/creatives"
+;   [api-key]
+;   (doapi api-key))
 
-(defapi list-ads!
-  :get "/v1/flight/819865/creatives"
-  [api-key]
-  (doapi api-key))
+; (defapi list-ads!
+;   :get "/v1/flight/819865/creatives"
+;   [api-key]
+;   (doapi api-key))
 
-(defapi ad!
-  :get "/v1/flight/819865/creative/%s"
-  [api-key {:keys [id]}]
-  (doapi api-key [id] nil))
+; (defapi ad!
+;   :get "/v1/flight/819865/creative/%s"
+;   [api-key {:keys [id]}]
+;   (doapi api-key [id] nil))
 
