@@ -6,8 +6,8 @@
             [cheshire.core         :refer (parse-string)]))
 
 (env/def
-  ADZERK_API_HOST "http://api.adzerk.net"
-  ADZERK_API_KEY  :required)
+  ADZERK_API_HOST "https://api.adzerk.net"
+  ADZERK_API_KEY  nil)
 
 (def ^:dynamic *api-key* ADZERK_API_KEY)
 
