@@ -12,7 +12,7 @@
 (def ^:dynamic *api-key* ADZERK_API_KEY)
 
 (defn zerkreq
-  [method url-fmt & {:keys [data-type] :as opts}]
+  [method url-fmt {:keys [input-data output-data] :as opts}]
   (let [url-fmt (str ADZERK_API_HOST url-fmt)]
     (fn doreq
       ([]
@@ -21,24 +21,34 @@
        (doreq [] data))
       ([args data]
        (let [url     (apply format url-fmt args)
-             payload (case data-type
-                       :form {:form-params data}
-                       :json {:body data}
-                       :none {})
-             req     (merge
-                       {:method      method
-                        :form-params data
-                        :url         url
-                        :headers     {"X-Adzerk-ApiKey" *api-key*}}
-                       payload)]
+             input  (case input-data
+                      :form {:form-params data}
+                      :json {:body data}
+                      {})
+             output (case output-data
+                       :stream {:as :stream}
+                       {})
+             req    (merge
+                      {:method  method
+                       :url     url
+                       :headers {"X-Adzerk-ApiKey" *api-key*}}
+                      input
+                      output)]
          ;; an HTML response indicates an error
-         (try (parse-string (:body (client/request (log-passthru req))) true)
-              (catch Exception e
-                (throw (log/spy :error (ex-info "API request exception" req e))))))))))
+         (try
+           (let [{:keys [body headers] :as res} (client/request
+                                                  (log-passthru req))
+                 content-type (get headers "Content-Type")]
+             (case content-type
+               "application/gzip" body
+               "application/json" (parse-string body true)
+               (throw (Exception. "API response content type was not gzip or json."))))
+           (catch Exception e
+             (throw (log/spy :error (ex-info "API request exception" req e))))))))))
 
 (defmacro api
-  [method url-fmt data-type & forms]
-  `(let [~'doapi (zerkreq ~method ~url-fmt :data-type ~data-type)]
+  [method url-fmt opts & forms]
+  `(let [~'doapi (zerkreq ~method ~url-fmt ~opts)]
      (fn ~@forms)))
 
 (defmacro defapi
@@ -49,7 +59,8 @@
   "List all items."
   [item]
   `(defapi ~(symbol (format "list-%ss!" item))
-     :get ~(str "/v1/" item) :none
+     :get ~(str "/v1/" item)
+     {:input-data :none}
      []
      (:items (~'doapi))))
 
@@ -57,7 +68,8 @@
   "Get an item."
   [item]
   `(defapi ~(symbol (format "%s" item))
-     :get ~(str "/v1/" item "/%s") :none
+     :get ~(str "/v1/" item "/%s")
+     {:input-data :none}
      [id#]
      (~'doapi [id#] nil)))
 
