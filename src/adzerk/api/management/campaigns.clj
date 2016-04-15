@@ -5,13 +5,11 @@
 (defapi create-advertiser!
   :post "/v1/advertiser"
   [api-key req]
-  (print "creating advertiser")
   (doapi api-key {:advertiser (clj->csharp req)}))
 
 (defapi update-advertiser!
   :put "/v1/advertiser/%s"
   [api-key {:keys [id] :as req}]
-  (print "updating advertiser")
   (doapi api-key [id] {:advertiser (clj->csharp req)}))
 
 (defapi delete-advertiser!
