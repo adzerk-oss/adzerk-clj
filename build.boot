@@ -11,14 +11,20 @@
 (require '[adzerk.bootlaces :refer :all]
          '[adzerk.boot-test :refer :all])
 
-(def +version+ "0.0.3")
+(def +version+ "0.0.4")
 
 (bootlaces! +version+)
 
 (task-options!
-  pom {:project     'adzerk-clj
+  pom {:project     'adzerk/adzerk-clj
        :version     +version+
        :description "A Clojure wrapper for the Adzerk APIs"
-       :url         "TBD"
+       :url         "https://github.com/adzerk-oss/adzerk-clj"
+       :scm         {:url "https://github.com/adzerk-oss/adzerk-clj"}
        :license     {"name" "Eclipse Public License"
                      "url" "http://www.eclipse.org/legal/epl-v10.html"}})
+
+(deftask deploy
+  "Builds uberjar, installs it to local Maven repo, and deploys it to Clojars."
+  []
+  (comp (build-jar) (push-release)))
