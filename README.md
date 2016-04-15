@@ -1,5 +1,7 @@
 # adzerk-clj
 
+[![Clojars Project](https://img.shields.io/clojars/v/adzerk/adzerk-clj.svg)](https://clojars.org/adzerk/adzerk-clj)
+
 > **WARNING: This library is in alpha!** Use at your own peril until version 0.1.0+. You have been warned. :ghost:
 
 ## Usage
