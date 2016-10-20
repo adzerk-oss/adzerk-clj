@@ -44,7 +44,8 @@
                "application/json" (parse-string body true)
                (throw (Exception. "API response content type was not gzip or json."))))
            (catch Exception e
-             (throw (log/spy :error (ex-info "API request exception" req e))))))))))
+             (let [req-no-api-key (assoc-in req [:headers "X-Adzerk-ApiKey"] "REDACTED")]
+               (throw (log/spy :error (ex-info "API request exception" req-no-api-key e)))))))))))
 
 (defmacro api
   [method url-fmt opts & forms]
@@ -72,4 +73,3 @@
      {:input-data :none}
      [id#]
      (~'doapi [id#] nil)))
-
